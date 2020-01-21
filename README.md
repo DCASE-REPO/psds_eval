@@ -27,7 +27,7 @@ read the paper accessible from the link above.
    detection's start and end times so they are within a certain distance from
    the ground truth's. This determines whether the detections are correct or
    not.
-   An example of such constrain is commonly called collar. While it introduces
+   An example of such a constraint is commonly called collar. While it introduces
    some degree of tolerance for either human or system imperfections in the
    evaluation, it also increases the need for very accurate ground truths by
    requiring the detections to closely match the annotations. Suppose an audio
@@ -45,16 +45,16 @@ read the paper accessible from the link above.
    foreground rectangles represent the system detections. Vertical dashed lines
    simulate how the ground truth boundaries are affected by the collar.
 
-   ![](./examples/data/def_evtdet.jpg)
+   ![Fig: Event Detection](https://raw.githubusercontent.com/audioanalytic/psds_eval/master/examples/data/def_evtdet.jpg)
 
 2. **Cross-triggers**
 
-   Suppose to have a 3-class SED system that outputs 4 detections for a given
+   Suppose we have a 3-class SED system that outputs 4 detections for a given
    audio sample with two sound events. The scenario is depicted in the figure
    below in which ground truths and detections are indicated by background and
    foreground rectangles, respectively.
 
-   ![](examples/data/ct_example.jpg)
+   ![Fig: CT Example](https://raw.githubusercontent.com/audioanalytic/psds_eval/master/examples/data/ct_example.jpg)
 
    Detection 1 and 3 are clearly true positives while detections 2 and 4 are
    false positives. In addition to this, PSDS also counts detection 4 as a
@@ -67,7 +67,7 @@ read the paper accessible from the link above.
    | Class 2 | | 1 | | |
    | Class 3 | 1 | | | 1 |
 
-   PSDS, also allows a custom weight to be applied to CTs in order to define
+   PSDS also allows a custom weight to be applied to CTs in order to define
    their importance in the final evaluation. Such weighting can be crucial when
    the evaluation dataset is unbalanced. For instance, the sound of a
    window glass breaking rarely happens in the real world, yet the reliable
@@ -94,7 +94,7 @@ read the paper accessible from the link above.
    given that for a similar false positive rate the system can achieve a
    significantly higher true positive rate if tuned to *B*.
 
-   ![](examples/data/psd_roc_2.png)
+   ![Fig: PSD ROC Curve](https://raw.githubusercontent.com/audioanalytic/psds_eval/master/examples/data/psd_roc_2.png)
 
    An evaluation based on multiple OPs provides a better understanding of the
    system performance at different TP/FP trade-offs.
@@ -105,11 +105,11 @@ read the paper accessible from the link above.
    evaluation and, unlike standard ROC curves in the binary classification case,
    it does not represent every possible operating point configuration of the
    evaluated system. For example, a system with two possible classes (speech and
-   drum), can be tuned to achieve 80% TP for speech and 70% TP for drum, but
-   such operating point is not precisely represented on the PSD-ROC curve.
-   Hence, not all possible configurations of the given system is expected to lie
+   drum) can be tuned to achieve 80% TP for speech and 70% TP for drum, but
+   such an operating point is not precisely represented on the PSD-ROC curve.
+   Hence, not all possible configurations of the given system are expected to lie
    on the curve. However, the summary of the performance and how it changes for
-   each class is still represented in the PSD-ROC and its area (i.e., the PSDS).
+   each class is still represented in the PSD-ROC and its area (i.e. the PSDS).
 
 ## Installation
 In order to install the `psds_eval` package:
@@ -146,11 +146,11 @@ $ python examples/run_psds.py
 ```
 The script should output a PSD-Score value of **0.40813** and the plot below.
 
-![](./examples/data/psd_roc.png)
+![Fig: PSD ROC from example code](https://raw.githubusercontent.com/audioanalytic/psds_eval/master/examples/data/psd_roc.png)
 
 ## FAQ
 ### What are all the PSDS parameters for?
-One of the design principle behind `psds_eval` is *flexibility*.
+One of the design principles behind `psds_eval` is *flexibility*.
 In practice, the PSDS evaluation adapts to any task constraints by
 configuring the following three parameters (cf. Fig.2a article):
 
@@ -209,7 +209,7 @@ the event
 
 An example of ground truth table
 
-|filename|onset|offset|event_label|
+|filename|onset|offset|event\_label|
 |--------:|-----:|------:|-------:|
 |test.wav  |   2.0 |   20.0 |   c1|
 |test.wav  |  12.0 |   35.0 |   c2|
@@ -223,7 +223,7 @@ An example of ground truth table
 
 An example of detections table
 
-|filename|onset|offset|event_label|
+|filename|onset|offset|event\_label|
 |--------:|-----:|------:|-------:|
 |test.wav |    0.0  |  19.0  |   c1|
 |test.wav |   40.0  |  45.0  |   c1|
@@ -246,4 +246,4 @@ Simply contains the duration (in seconds) for each file in the dataset:
 "filename" column
 
 ## License
-psds\_eval is MIT licensed, as found in the [LICENSE](LICENSE) file.
+psds\_eval is MIT licensed, as found in the [LICENSE](https://github.com/audioanalytic/psds_eval/blob/master/LICENSE) file.
