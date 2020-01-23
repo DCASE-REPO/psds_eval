@@ -407,8 +407,14 @@ class PSDSEval:
         self.operating_points = \
             self.operating_points.append(op, ignore_index=True)
 
-    def _del_ops(self):
-        """Deletes and resets all PSDSEval operating points"""
+    def clear_all_operating_points(self):
+        """Deletes any Operating Point previously added. An evaluation of new
+        OPs can be safely performed once this function is executed.
+
+        Note that neither the task definition (i.e. self.threshold) nor the
+        dataset (i.e. self.metadata and self.ground_truth) are affected by this
+        function.
+        """
         del self.operating_points
         self.operating_points = self._operating_points_table()
 

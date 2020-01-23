@@ -283,3 +283,35 @@ def test_full_dcase_validset():
     assert np.all(pd.util.hash_pandas_object(gt).values == gt_hash)
     assert np.all(pd.util.hash_pandas_object(metadata).values == meta_hash)
     assert np.all(pd.util.hash_pandas_object(det).values == det_hash)
+
+
+def test_multi_ops_multiple_times_sequentially():
+    """Run 3 times test_full_psds using delete_ops to reset the metric"""
+    gt = pd.read_csv(join(DATADIR, "baseline_validation_gt.csv"),
+                     sep="\t")
+    metadata = pd.read_csv(join(DATADIR, "baseline_validation_metadata.csv"),
+                           sep="\t")
+    dets = []
+    dets.append(pd.read_csv(join(DATADIR, "baseline_validation_AA_0.005.csv"),
+                            sep="\t"))
+    for k in range(5):
+        dets.append(dets[0].sample(4500, random_state=7*k))
+        print(dets[k+1])
+
+    psds_eval = PSDSEval(dtc_threshold=0.5, gtc_threshold=0.5,
+                         cttc_threshold=0.3, ground_truth=gt,
+                         metadata=metadata)
+
+    for k in range(3):
+        for det_t in dets:
+            psds_eval.add_operating_point(det_t)
+
+        psds = psds_eval.psds(0.0, 0.0, 100)
+
+        if k == 0:
+            ref_psds_value = psds.value
+        else:
+            assert psds.value == pytest.approx(ref_psds_value), \
+                "PSDS was calculated incorrectly"
+
+        psds_eval.clear_all_operating_points()

@@ -169,3 +169,22 @@ def test_full_psds():
     psds = psds_eval.psds(0.0, 0.0, 100.0)
     assert psds.value == pytest.approx(0.9142857142857143), \
         "PSDS was calculated incorrectly"
+
+
+def test_delete_ops():
+    """Perform deletion of ops"""
+    metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
+    det = pd.read_csv(os.path.join(DATADIR, "test_1.det"), sep="\t")
+    det_2 = pd.read_csv(os.path.join(DATADIR, "test_1a.det"), sep="\t")
+    gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
+    psds_eval = PSDSEval(dtc_threshold=0.5, gtc_threshold=0.5,
+                         cttc_threshold=0.3, ground_truth=gt,
+                         metadata=metadata)
+
+    assert psds_eval.operating_points.empty
+    psds_eval.add_operating_point(det)
+    psds_eval.add_operating_point(det_2)
+    assert psds_eval.num_operating_points() == 2
+
+    psds_eval.clear_all_operating_points()
+    assert psds_eval.operating_points.empty

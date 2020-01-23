@@ -195,6 +195,18 @@ It depends on how the system behaves. We encourage the user to start with at
 least 20 operating points and, based on how the PSD-ROC looks, more operating
 points can be added to represent the system behavior as accurately as possible.
 
+### Is it possible to remove the operating points for a new system evaluation?
+Yes, it is possible to remove all the previously added operating points by using
+the function `PSDSEval.clear_all_operating_points`. The evaluator is now ready
+to accept new operating points and compute a new evaluation.
+
+**Important notes:**
+- the function _only_ removes the stored operating points
+- the dataset, defined by `PSDSEval.metadata` and `PSDSEval.ground_truth`, is
+not modified
+- the task definition, defined by the 3 thresholds (DTC, GTC and CTTC) stored in
+`self.threshold`, is not modified
+
 ### What are the input requirements?
 All the inputs must be a `pandas.DataFrame`. There are two table
 formats:
