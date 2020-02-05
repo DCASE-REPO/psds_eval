@@ -284,27 +284,28 @@ class PSDSEval:
 
     def _evaluate_detections(self, tp, ct):
         """Produces a confusion matrix and detection rates for all classes"""
-        n_classes = len(self.class_names) - 1  # -1 to removes the world label
-        counts = np.zeros([n_classes + 1, n_classes + 1])
-        tp_ratio = np.zeros(n_classes)
-        fp_rate = np.zeros(n_classes)
-        ct_rate = np.zeros((n_classes, n_classes))
-        class_names_set = set(self.class_names)
+        n_real_classes = len(self.class_names) - 1 # don't count WORLD
+        counts = np.zeros([len(self.class_names), len(self.class_names)])
+        tp_ratio = np.zeros(n_real_classes)
+        fp_rate = np.zeros(n_real_classes)
+        ct_rate = np.zeros((n_real_classes, n_real_classes))
+        # Create an ordered set of class names without world
+        class_names_set_no_world = set(self.class_names).difference([WORLD])
+        # Create an ordered set of class names with world at the end
+        cls_names_world_end = sorted(class_names_set_no_world)
+        cls_names_world_end.append(WORLD)
         t_filter = self.ground_truth.event_label == WORLD
         dataset_dur = self.ground_truth[t_filter].duration.sum()
-        ct_tmp = \
-            ct.groupby(["event_label_det", "event_label_gt"]).filename.count()
+        ct_tmp = ct.groupby(["event_label_det",
+                             "event_label_gt"]).filename.count()
         gt_dur = self.ground_truth.groupby("event_label").duration.sum()
-
-        # counts is a confusion matrix
+        n_cls_gt = self.ground_truth.groupby("event_label").filename.count()
         # i, cls: detection -- j, ocls: ground truth
-        for i, cls in enumerate(sorted(class_names_set.difference([WORLD]))):
+        for i, cls in enumerate(sorted(class_names_set_no_world)):
             counts[i, i] = len(tp[tp.event_label_gt == cls])
-            n_cls_gt = \
-                self.ground_truth.groupby("event_label").filename.count()
             if cls in n_cls_gt:
                 tp_ratio[i] = counts[i, i] / n_cls_gt[cls]
-            for j, ocls in enumerate(sorted(class_names_set)):
+            for j, ocls in enumerate(cls_names_world_end):
                 try:
                     counts[j, i] = ct_tmp[cls, ocls]
                 except KeyError:
