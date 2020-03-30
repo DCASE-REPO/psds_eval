@@ -5,6 +5,7 @@ calculate the Polyphonic Sound Detection Score that is presented in:
 
 > **A Framework for the Robust Evaluation of Sound Event Detection**  
 C. Bilen, G. Ferroni, F. Tuveri, J. Azcarreta, S. Krstulovic  
+In IEEE International Conference on Acoustics, Speech, and Signal Processing (ICASSP). May 2020  
 https://arxiv.org/abs/1910.08440
 
 The PSDS is a metric for evaluating Sound Event Detection (SED) systems.
@@ -110,6 +111,9 @@ read the paper accessible from the link above.
    Hence, not all possible configurations of the given system are expected to lie
    on the curve. However, the summary of the performance and how it changes for
    each class is still represented in the PSD-ROC and its area (i.e. the PSDS).
+   * The PSD-ROC curve is monotonically increasing. However, when `alpha_st` is
+   not 0, this can no longer be guaranteed (cf. Equation 9 in the paper linked
+   above).
 
 ## Installation
 In order to install the `psds_eval` package:
@@ -184,6 +188,7 @@ defines an upper bound for the mistakes a system can make in a unit of time.
 **Important notes:**
 - More than one detection can contribute to a single true positive (TP)
 - Detections contributing to TPs are not considered for cross-trigger (CT) counts
+- `alpha_st` must be a positive number
 
 ### Why are multiple operating points required?
 We want to evaluate a system across a range of operating points in contrast with

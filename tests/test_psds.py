@@ -27,6 +27,12 @@ def test_valid_thresholds(x):
     assert PSDSEval(gtc_threshold=x)
 
 
+def test_negative_alpha_st():
+    """Ensure a PSDSEvalError is raised if alpha_st is negative"""
+    with pytest.raises(PSDSEvalError, match="alpha_st can't be negative"):
+        PSDSEval().psds(0.0, -1.0, 100)
+
+
 def tests_num_operating_points_without_any_operating_points():
     """Ensures that the eval class has no operating points when initialised"""
     psds_eval = PSDSEval()

@@ -33,6 +33,15 @@ def test_area_under_y_not_monotonically_increasing():
         PSDSEval._auc(x, y)
 
 
+def test_area_under_y_not_monotonically_increasing_allow_decrease_y():
+    """Ensure the auc is computed correctly when y is not non-decreasing but
+    the flag allow_decrease_y is set to True"""
+    x = np.array([0, 1, 2, 3, 4])
+    y = np.array([1.1, 2.3, 4.2, 3.5, 5.5])
+    auc = PSDSEval._auc(x, y, decreasing_y=True)
+    assert auc == pytest.approx(11.1), "The area calculation was incorrect"
+
+
 def test_simple_area_under_curve_with_max():
     """Ensure area calculation is correct when a max_x value is specified"""
     x = np.array([0, 1, 2, 3, 4])

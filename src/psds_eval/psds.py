@@ -592,11 +592,6 @@ class PSDSEval:
         return PSDROC(xp=tpr_efpr.xp, yp=etpr, std=tpr_efpr.std,
                       mean=tpr_efpr.mean)
 
-    def _psds(self, psd_roc, alpha_st, max_efpr):
-        """Calculate the PSDS from the PSD ROC curve"""
-        psds_curve = self._effective_tp_ratio(psd_roc, alpha_st)
-        return self._auc(psds_curve.xp, psds_curve.yp, max_efpr) / max_efpr
-
     def psds(self, alpha_ct=0.0, alpha_st=0.0, max_efpr=None, en_interp=False):
         """Computes PSDS metric for given system
 
@@ -604,7 +599,7 @@ class PSDSEval:
             alpha_ct (float): cross-trigger weight in effective FP
                 rate computation
             alpha_st (float): cost of instability across classes used
-                to compute effective TP ratio (eTPR)
+                to compute effective TP ratio (eTPR). Must be positive
             max_efpr (float): maximum effective FP rate at which the SED
                 system is evaluated (default: 100 errors per unit of time)
             en_interp (bool): if true the psds is calculated using
@@ -614,6 +609,8 @@ class PSDSEval:
         Returns:
             A (PSDS) Polyphonic Sound Event Detection Score object
         """
+        if alpha_st < 0:
+            raise PSDSEvalError("alpha_st can't be negative")
 
         tpr_fpr_curve, tpr_ctr_curve, tpr_efpr_curve = \
             self.psd_roc_curves(alpha_ct, en_interp)
@@ -622,21 +619,24 @@ class PSDSEval:
             max_efpr = np.max(tpr_efpr_curve.xp)
 
         psd_roc = self._effective_tp_ratio(tpr_efpr_curve, alpha_st)
-        score = self._psds(psd_roc, alpha_st, max_efpr)
+        score = self._auc(psd_roc.xp, psd_roc.yp, max_efpr,
+                          alpha_st > 0) / max_efpr
         return PSDS(value=score, plt=psd_roc, alpha_st=alpha_st,
                     alpha_ct=alpha_ct, max_efpr=max_efpr)
 
     @staticmethod
-    def _auc(x, y, max_x=None):
+    def _auc(x, y, max_x=None, decreasing_y=False):
         """Compute area under curve described by the given x, y points.
 
         To avoid an overestimate the area in case of large gaps between
         points, the area is computed as sums of rectangles rather than
         trapezoids (np.trapz).
 
-        Both x and y must be non-decreasing 1-dimensional numpy.ndarray. The
-        non-decreasing property is verified if for all i in {2, ..., x.size},
-        x[i-1] <= x[i]
+        Both x and y must be non-decreasing 1-dimensional numpy.ndarray. In
+        particular cases it is necessary to relax such constraint for y. This
+        can be done by setting allow_decrease_y to True.
+        The non-decreasing property is verified if
+        for all i in {2, ..., x.size}, x[i-1] <= x[i]
 
         Args:
             x (numpy.ndarray): 1-D array containing non-decreasing
@@ -644,6 +644,8 @@ class PSDSEval:
             y (numpy.ndarray): 1-D array containing non-decreasing
                 values for y-axis
             max_x (float): maximum x-coordinate for area computation
+            decreasing_y (bool): controls the check for non-decreasing property
+                of y
 
         Returns:
              A float that represents the area under curve
@@ -660,7 +662,7 @@ class PSDSEval:
                                 f"length {x.size} != {y.size}")
         if np.any(np.diff(x) < 0):
             raise PSDSEvalError("non-decreasing property not verified for x")
-        if np.any(np.diff(y) < 0):
+        if not decreasing_y and np.any(np.diff(y) < 0):
             raise PSDSEvalError("non-decreasing property not verified for y")
         _x = np.array(x)
         _y = np.array(y)
