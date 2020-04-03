@@ -26,7 +26,8 @@ class PSDSEval:
     Audio Analytic Labs in:
     A Framework for the Robust Evaluation of Sound Event Detection
     C. Bilen, G. Ferroni, F. Tuveri, J. Azcarreta, S. Krstulovic
-    https://arxiv.org/abs/1910.08440
+    In IEEE International Conference on Acoustics, Speech, and Signal
+    Processing (ICASSP). May 2020, URL: https://arxiv.org/abs/1910.08440
 
     Attributes:
         operating_points: An object containing all operating point data
@@ -46,9 +47,9 @@ class PSDSEval:
         """Initialise the PSDS evaluation
 
         Args:
-            dtc_threshold: Detection Tolerance Criteria (DTC) threshold
-            gtc_threshold: Ground Truth Intersection Criteria (GTC) threshold
-            cttc_threshold: Cross-Trigger Tolerance Criteria (CTTC) threshold
+            dtc_threshold: Detection Tolerance Criterion (DTC) threshold
+            gtc_threshold: Ground Truth Intersection Criterion (GTC) threshold
+            cttc_threshold: Cross-Trigger Tolerance Criterion (CTTC) threshold
             **kwargs:
             class_names: list of output class names. If not given it will be
                 inferred from the ground truth table
@@ -234,7 +235,7 @@ class PSDSEval:
             cross_t.inter_duration / cross_t.duration_gt
         return cross_t
 
-    def _detection_and_ground_truth_criterons(self, cross_t):
+    def _detection_and_ground_truth_criteria(self, cross_t):
         """Creates GTC and DTC detection sets
 
         Args:
@@ -282,7 +283,7 @@ class PSDSEval:
         gtc_filter = tmp.gt_coverage_sum >= self.threshold.gtc
         return tmp[dtc_filter & gtc_filter], dtc_ids
 
-    def _evaluate_detections(self, tp, ct):
+    def _confusion_matrix_and_rates(self, tp, ct):
         """Produces the confusion matrix and per-class detection rates.
 
         The first dimension of the confusion matrix (axis 0) represents the
@@ -291,7 +292,7 @@ class PSDSEval:
 
         Args:
             tp (pandas.DataFrame): table of true positive detections that
-                satisfy both DTC and GTC
+                satisfy both the DTC and GTC
             ct (pandas.DataFrame): table with cross-triggers (detections that
                 satisfy the CTTC)
 
@@ -299,7 +300,7 @@ class PSDSEval:
             A tuple with confusion matrix, true positive ratios, false positive
             rates and cross-trigger rates
         """
-        n_real_classes = len(self.class_names) - 1 # don't count WORLD
+        n_real_classes = len(self.class_names) - 1  # don't count WORLD
         counts = np.zeros([len(self.class_names), len(self.class_names)])
         tp_ratio = np.zeros(n_real_classes)
         fp_rate = np.zeros(n_real_classes)
@@ -342,7 +343,7 @@ class PSDSEval:
         The CTTC set consists of detections that:
             1) are not in the True Positive table
             2) intersect with ground truth of a different class (incl. WORLD)
-            3) have not satisfied the detection tolerance criteria
+            3) have not satisfied the detection tolerance criterion
 
         Args:
             inter_t (pandas.DataFrame): The table of detections and their
@@ -368,6 +369,32 @@ class PSDSEval:
         cttc = ct_t[(ct_t.det_precision_sum >= self.threshold.cttc) |
                     (ct_t.event_label_gt == WORLD)]
         return cttc
+
+    def _evaluate_detections(self, det_t):
+        """
+        Apply the DTC/GTC/CTTC definitions presented in the ICASSP paper (link
+        above) to computes the confusion matrix and the per-class true positive
+        ratios, false positive rates and cross-triggers rates.
+
+        Args:
+            det_t: (pandas.DataFrame): An initialised detections table
+
+        Returns:
+            tuple containing confusion matrix, TP_ratio, FP_rate and CT_rate
+        """
+
+        inter_t = self._ground_truth_intersections(det_t, self.ground_truth)
+        tp, dtc_ids = self._detection_and_ground_truth_criteria(inter_t)
+        cttc = self._cross_trigger_criterion(inter_t, tp, dtc_ids)
+
+        # For the final detection count we must drop duplicates
+        cttc = cttc.drop_duplicates(["id_det", "event_label_gt"])
+        tp = tp.drop_duplicates("id_gt")
+
+        cts, tp_ratio, fp_rate, ct_rate = \
+            self._confusion_matrix_and_rates(tp, cttc)
+
+        return cts, tp_ratio, fp_rate, ct_rate
 
     def add_operating_point(self, detections):
         """Adds a new Operating Point (OP) into the evaluation
@@ -398,15 +425,7 @@ class PSDSEval:
         if not op_id:
             return
 
-        inter_t = self._ground_truth_intersections(det_t, self.ground_truth)
-        tp, dtc_ids = self._detection_and_ground_truth_criterons(inter_t)
-        cttc = self._cross_trigger_criterion(inter_t, tp, dtc_ids)
-
-        # For the final detection count we must drop duplicates
-        cttc = cttc.drop_duplicates(["id_det", "event_label_gt"])
-        tp = tp.drop_duplicates("id_gt")
-
-        cts, tp_ratio, fp_rate, ct_rate = self._evaluate_detections(tp, cttc)
+        cts, tp_ratio, fp_rate, ct_rate = self._evaluate_detections(det_t)
         self._add_op(opid=op_id, counts=cts, tpr=tp_ratio, fpr=fp_rate,
                      ctr=ct_rate)
 
@@ -569,6 +588,52 @@ class PSDSEval:
                               std=np.nanstd(tpr_v_ctr, axis=0))
 
         return tpr_vs_fpr_c, tpr_vs_ctr_c, tpr_vs_efpr_c
+
+    def compute_macro_f_score(self, detections, beta=1.):
+        """Computes the macro F_score for the given detection table
+
+        The DTC/GTC/CTTC criteria presented in the ICASSP paper (link above)
+        are exploited to compute the confusion matrix. From the latter, class
+        dependent F_score metrics are computed. These are further averaged to
+        compute the macro F_score.
+
+        It is important to notice that a cross-trigger is also counted as
+        false positive.
+
+        Args:
+            detections (pandas.DataFrame): A table of system detections
+                that has the following columns:
+                "filename", "onset", "offset", "event_label".
+            beta: coefficient used to put more (beta > 1) or less (beta < 1)
+                emphasis on false negatives.
+
+        Returns:
+            A tuple with average F_score and dictionary with per-class F_score
+
+        Raises:
+            PSDSEvalError: if class instance doesn't have ground truth table
+        """
+        if self.ground_truth is None:
+            raise PSDSEvalError("Ground Truth must be provided before "
+                                "adding the first operating point")
+
+        det_t = self._init_det_table(detections)
+        counts, tp_ratios, _, _ = self._evaluate_detections(det_t)
+
+        k = (1 + beta ** 2)
+        per_class_tp = np.diag(counts)[:-1]
+        num_gts = per_class_tp / tp_ratios
+        per_class_fp = counts[:-1, -1]
+        per_class_fn = num_gts - per_class_tp
+        f_per_class = (k * per_class_tp) / (k * per_class_tp + beta ** 2 *
+                                            per_class_fn + per_class_fp)
+
+        # remove the injected world label
+        class_names_no_world = sorted(set(self.class_names).difference([WORLD]))
+        f_dict = {c: f for c, f in zip(class_names_no_world, f_per_class)}
+        f_avg = np.nanmean(f_per_class)
+
+        return f_avg, f_dict
 
     @staticmethod
     def _effective_tp_ratio(tpr_efpr, alpha_st):
