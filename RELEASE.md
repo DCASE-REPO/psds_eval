@@ -1,3 +1,17 @@
+# Release 0.2.0
+
+## Features
+- introduced a new plot function for displaying per-class PSD-ROC.
+- added support for external axes to the plot_psd_roc function.
+- added the duration_unit as class attribute. It is then returned by the
+PSDSEval.psds function in the PSDS namedtuple.
+- added a jupyter notebook that shows how the PSDS can be used to extract.
+performance insights for the DCASE2020 Task 4 baseline system. It also explain
+in more details few features of PSDS metric.
+
+## Minor changes
+- fixed a typo in README.md
+
 # Release 0.1.0
 
 ## Features

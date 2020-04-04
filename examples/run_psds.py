@@ -6,7 +6,7 @@ A script that calculates the PSDS using example data from DCASE 2019.
 import os
 import numpy as np
 import pandas as pd
-from psds_eval import (PSDSEval, plot_psd_roc)
+from psds_eval import (PSDSEval, plot_psd_roc, plot_per_class_psd_roc)
 
 if __name__ == "__main__":
     dtc_threshold = 0.5
@@ -40,3 +40,12 @@ if __name__ == "__main__":
 
     # Plot the PSD-ROC
     plot_psd_roc(psds)
+
+    # Plot per class tpr vs fpr/efpr/ctr
+    tpr_vs_fpr, _, tpr_vs_efpr = psds_eval.psd_roc_curves(alpha_ct=1.)
+    plot_per_class_psd_roc(tpr_vs_fpr, psds_eval.class_names,
+                           title="Per-class TPR-vs-FPR PSDROC",
+                           xlabel="FPR")
+    plot_per_class_psd_roc(tpr_vs_efpr, psds_eval.class_names,
+                           title="Per-class TPR-vs-eFPR PSDROC",
+                           xlabel="eFPR")

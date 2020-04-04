@@ -10,7 +10,8 @@ WORLD = "injected_psds_world_label"
 RatesPerClass = namedtuple("RatesPerClass", ["tp_ratio", "fp_rate", "ct_rate",
                                              "effective_fp_rate"])
 PSDROC = namedtuple("PSDROC", ["yp", "xp", "mean", "std"])
-PSDS = namedtuple("PSDS", ["value", "plt", "alpha_st", "alpha_ct", "max_efpr"])
+PSDS = namedtuple("PSDS", ["value", "plt", "alpha_st", "alpha_ct", "max_efpr",
+                           "duration_unit"])
 Thresholds = namedtuple("Thresholds", ["gtc", "dtc", "cttc"])
 
 
@@ -65,10 +66,10 @@ class PSDSEval:
         if gtc_threshold < 0.0 or gtc_threshold > 1.0:
             raise PSDSEvalError("gtc_threshold must be between 0 and 1")
 
-        duration_unit = kwargs.get("duration_unit", "hour")
-        if duration_unit not in self.secs_in_uot.keys():
+        self.duration_unit = kwargs.get("duration_unit", "hour")
+        if self.duration_unit not in self.secs_in_uot.keys():
             raise PSDSEvalError("Invalid duration_unit specified")
-        self.nseconds = self.secs_in_uot[duration_unit]
+        self.nseconds = self.secs_in_uot[self.duration_unit]
 
         self.class_names = []
         self._update_class_names(kwargs.get("class_names", None))
@@ -582,10 +583,13 @@ class PSDSEval:
         tpr_vs_efpr_c = PSDROC(yp=tpr_v_efpr, xp=efpr_points,
                                mean=np.nanmean(tpr_v_efpr, axis=0),
                                std=np.nanstd(tpr_v_efpr, axis=0))
-        tpr_v_ctr = tpr_v_ctr.reshape([-1, ctr_points.size])
         tpr_vs_ctr_c = PSDROC(yp=tpr_v_ctr, xp=ctr_points,
-                              mean=np.nanmean(tpr_v_ctr, axis=0),
-                              std=np.nanstd(tpr_v_ctr, axis=0))
+                              mean=np.nanmean(
+                                  tpr_v_ctr.reshape([-1, ctr_points.size]),
+                                  axis=0),
+                              std=np.nanstd(
+                                  tpr_v_ctr.reshape([-1, ctr_points.size]),
+                                  axis=0))
 
         return tpr_vs_fpr_c, tpr_vs_ctr_c, tpr_vs_efpr_c
 
@@ -687,7 +691,8 @@ class PSDSEval:
         score = self._auc(psd_roc.xp, psd_roc.yp, max_efpr,
                           alpha_st > 0) / max_efpr
         return PSDS(value=score, plt=psd_roc, alpha_st=alpha_st,
-                    alpha_ct=alpha_ct, max_efpr=max_efpr)
+                    alpha_ct=alpha_ct, max_efpr=max_efpr,
+                    duration_unit=self.duration_unit)
 
     @staticmethod
     def _auc(x, y, max_x=None, decreasing_y=False):
@@ -747,7 +752,7 @@ class PSDSEval:
         return np.sum(dx * _y)
 
 
-def plot_psd_roc(psd, en_std=False, filename=None, figsize=None):
+def plot_psd_roc(psd, en_std=False, axes=None, filename=None, **kwargs):
     """Shows (or saves) the PSD-ROC with optional standard deviation.
 
     When the plot is generated the area under PSD-ROC is highlighted.
@@ -758,37 +763,86 @@ def plot_psd_roc(psd, en_std=False, filename=None, figsize=None):
         psd (PSDS): The psd_roc that is to be plotted
         en_std (bool): if true the the plot will show the standard
             deviation curve
+        axes (matplotlib.axes.Axes): matplotlib axes used for the plot
         filename (str): if provided a file will be saved with this name
-        figsize (tuple): The figsize to be given to matplotlib
+        kwargs (dict): can set figsize
     """
 
     if not isinstance(psd, PSDS):
         raise PSDSEvalError("The psds data needs to be given as a PSDS object")
+    if axes is not None and not isinstance(axes, plt.Axes):
+        raise PSDSEvalError("The give axes is not a matplotlib.axes.Axes")
 
-    if figsize is None:
-        figsize = (7, 7)
+    show = False
+    if axes is None:
+        fig = plt.figure(figsize=kwargs.get("figsize", (7, 7)))
+        axes = fig.add_subplot()
+        show = True
 
-    plt.figure(figsize=figsize)
-    plt.vlines(psd.max_efpr, ymin=0, ymax=1.0, linestyles='dashed')
-    plt.step(psd.plt.xp, psd.plt.yp, 'b-', label='PSD-ROC', where="post")
+    axes.vlines(psd.max_efpr, ymin=0, ymax=1.0, linestyles='dashed')
+    axes.step(psd.plt.xp, psd.plt.yp, 'b-', label='PSD-ROC', where="post")
     if en_std:
-        plt.step(psd.plt.xp,
-                 np.maximum(psd.plt.mean - psd.plt.std, 0),
-                 c="b", linestyle="--", where="post")
-        plt.step(psd.plt.xp, psd.plt.mean + psd.plt.std,
-                 c="b", linestyle="--")
-    plt.fill_between(psd.plt.xp, y1=psd.plt.yp, y2=0, label="AUC",
+        axes.step(psd.plt.xp,
+                  np.maximum(psd.plt.mean - psd.plt.std, 0),
+                  c="b", linestyle="--", where="post")
+        axes.step(psd.plt.xp, psd.plt.mean + psd.plt.std,
+                  c="b", linestyle="--")
+    axes.fill_between(psd.plt.xp, y1=psd.plt.yp, y2=0, label="AUC",
                      alpha=0.3, color="tab:blue", linewidth=3, step="post")
-    plt.xlim([0, psd.max_efpr])
-    plt.ylim([0, 1.0])
-    plt.legend()
-    plt.ylabel("eTPR")
-    plt.xlabel("eFPR")
-    plt.suptitle(f"PSDS: {psd.value:.5f}")
-    plt.title(f"alpha_st: {psd.alpha_st:.2f}, alpha_ct: {psd.alpha_ct:.2f}, "
-              f"max_efpr: {psd.max_efpr}")
-    plt.grid()
+    axes.set_xlim([0, psd.max_efpr])
+    axes.set_ylim([0, 1.0])
+    axes.legend()
+    axes.set_ylabel("eTPR")
+    axes.set_xlabel(f"eFPR per {psd.duration_unit}")
+    axes.set_title(f"PSDS: {psd.value:.5f}\n"
+                   f"alpha_st: {psd.alpha_st:.2f}, alpha_ct: "
+                   f"{psd.alpha_ct:.2f}, max_efpr: {psd.max_efpr}")
+    axes.grid()
     if filename:
         plt.savefig(filename)
-    else:
+    if show:
+        plt.show()
+
+
+def plot_per_class_psd_roc(psd, class_names, axes=None, filename=None,
+                           **kwargs):
+    """
+
+    Args:
+        psd:
+        class_names:
+        axes:
+        filename:
+        kwargs:
+    """
+
+    if not isinstance(psd, PSDROC):
+        raise PSDSEvalError("The psdroc data needs to be a PSDROC object")
+    # ignore the artificial world label
+    if len(class_names) - 1 != psd.yp.shape[0]:
+        raise PSDSEvalError("Num of class names doesn't match the expected one")
+    if axes is not None and not isinstance(axes, plt.Axes):
+        raise PSDSEvalError("The give axes is not a matplotlib.axes.Axes")
+
+    show = False
+    if axes is None:
+        fig = plt.figure(figsize=kwargs.get("figsize", (7, 7)))
+        axes = fig.add_subplot()
+        show = True
+
+    for i in range(len(class_names) - 1):
+        axes.step(psd.xp, psd.yp[i], label=class_names[i], where="post")
+    axes.step(psd.xp, psd.mean, lw=2.0, ls="--", label="mean_TPR",
+              where="post")
+
+    axes.set_ylim([0, 1.0])
+    axes.set_xlim([0, kwargs.get("xlim", psd.xp.max())])
+    axes.legend()
+    axes.set_xlabel(kwargs.get("xlabel", "(e)FPR"))
+    axes.set_ylabel("TPR")
+    axes.set_title(kwargs.get("title", "Per-class PSDROC"))
+    axes.grid()
+    if filename:
+        plt.savefig(filename)
+    if show:
         plt.show()

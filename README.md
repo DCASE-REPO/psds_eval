@@ -1,7 +1,7 @@
 # Polyphonic Sound Detection Score (PSDS)
 
-`psds_eval` is a python package containing a library to
-calculate the Polyphonic Sound Detection Score that is presented in:
+`psds_eval` is a Python package containing a library to
+calculate the Polyphonic Sound Detection Score as presented in:
 
 > **A Framework for the Robust Evaluation of Sound Event Detection**  
 C. Bilen, G. Ferroni, F. Tuveri, J. Azcarreta, S. Krstulovic  
@@ -14,25 +14,25 @@ Differently from other widely adopted metrics, PSDS:
 an evaluation closer to the end-user perception of sound events
 2. Discriminates cross-triggers from generic false positives and supports
 their custom weighting to cope with imbalanced datasets and to help developers
-to identify the system weaknesses
+identify weaknesses in the system
 3. Evaluates the SED system performance using multiple operating points to truly
-measure the quality of the sound event modelling without the system calibration
+measure the quality of the sound event modelling without system calibration
 bias
 
-For an overview of those three aspects read below and for more details please
+These capabilities are summarized below. For more details please
 read the paper accessible from the link above.
 
 1. **Definition of event detection**
 
    When evaluating SED system performance, existing metrics constrain the
-   detection's start and end times so they are within a certain distance from
-   the ground truth's. This determines whether the detections are correct or
+   detection's start and end times to within a certain distance from
+   the ground truth. This determines whether the detections are correct or
    not.
-   An example of such a constraint is commonly called collar. While it introduces
+   An example of such a constraint is commonly called "collar". While it introduces
    some degree of tolerance for either human or system imperfections in the
    evaluation, it also increases the need for very accurate ground truths by
    requiring the detections to closely match the annotations. Suppose an audio
-   sample contains two very close dog barks (e.g., 200ms) and the annotator
+   sample contains two very close dog barks (e.g. 200ms) and the annotator
    decided to create two ground truths. A system that detects both annotations
    with a single detection should not be penalised.
 
@@ -57,10 +57,10 @@ read the paper accessible from the link above.
 
    ![Fig: CT Example](https://raw.githubusercontent.com/audioanalytic/psds_eval/master/examples/data/ct_example.jpg)
 
-   Detection 1 and 3 are clearly true positives while detections 2 and 4 are
-   false positives. In addition to this, PSDS also counts detection 4 as a
-   cross-trigger (CT) for Class 3 on the ground truth Class 1. The confusion
-   matrix for this example would be:
+   Detections 1 and 3 are clearly true positives (TP) while detections 2 and 4
+   are false positives (FP). In addition to this, PSDS also counts detection 4
+   as a cross-trigger (CT) for Class 3 on the ground truth Class 1.
+   The confusion matrix for this example would be:
 
    |         | Class 1 | Class 2 | Class 3 | WORLD |
    |---------|:-------:|:-------:|:-------:|:-----:|
@@ -70,7 +70,7 @@ read the paper accessible from the link above.
 
    PSDS also allows a custom weight to be applied to CTs in order to define
    their importance in the final evaluation. Such weighting can be crucial when
-   the evaluation dataset is unbalanced. For instance, the sound of a
+   the evaluation dataset is unbalanced. For instance, the sound of
    window glass breaking rarely happens in the real world, yet the reliable
    evaluation of glass breaking TPs requires a large number of positive class
    samples, which may in turn artificially increase the FP counts for other
@@ -84,8 +84,8 @@ read the paper accessible from the link above.
    Standard metrics for SED conflate the evaluation of sound event modelling
    with the evaluation of operating point (OP) tuning. In other fields of
    research, such as keyword spotting, this issue is solved by evaluating
-   multiple operating points and by reporting an overall measure like area under
-   curve. PSDS calculates the area under the Polyphonic Sound Detection
+   multiple operating points and by reporting an overall measure, such as area
+   under curve. PSDS calculates the area under the Polyphonic Sound Detection
    Receiver Operating Characteristic (PSD-ROC).
 
    The image below shows an example of PSD-ROC for a SED system. The curve is
@@ -119,14 +119,14 @@ read the paper accessible from the link above.
 In order to install the `psds_eval` package:
 1. Clone the repository `git clone https://github.com/audioanalytic/psds_eval.git`
 2. `cd psds_eval`
-3. `pip install -e .`
+3. `pip install -Ue .`
 
 ## Running the tests
-The tests can be run using pytest like so:
+The tests can be run using pytest with:
 > `pytest tests`
 
 ## Code Example
-A code example is available within the package and it shows how to use the library
+A code example is available within the package showing how to use the library
 to calculate the PSDS of a system for a given dataset.
 
 The dataset used in the example is the validation subset from the challenge
@@ -144,7 +144,7 @@ follow the convention: `baseline_<TH>.csv`, where TH = 0.1, 0.2, ..., 1.0
 represents the threshold value.
 
 Once the `psds_eval` package is installed you may run the evaluation example using the
-python script from the examples folder like so:
+Python script from the examples folder like so:
 ```
 $ python examples/run_psds.py
 ```
@@ -152,10 +152,17 @@ The script should output a PSD-Score value of **0.40813** and the plot below.
 
 ![Fig: PSD ROC from example code](https://raw.githubusercontent.com/audioanalytic/psds_eval/master/examples/data/psd_roc.png)
 
+## Notebook on PSDS evaluation of DCASE2020 Task 4 baseline system
+A Jupyter notebook has been created to show how PSDS can be used to extract
+insights on a SED system performance. It also explains in more detail certain
+key features of PSDS.
+
+The notebook is available [here](./jupyter/psds.ipynb).
+
 ## FAQ
 ### What are all the PSDS parameters for?
 One of the design principles behind `psds_eval` is *flexibility*.
-In practice, the PSDS evaluation adapts to any task constraints by
+In practice, the PSDS evaluation can adapt to any task constraints by
 configuring the following three parameters (cf. Fig.2a article):
 
 1. **Detection Tolerance Criterion threshold** (cf. Definition 2 article)
@@ -164,10 +171,10 @@ configuring the following three parameters (cf. Fig.2a article):
 
 2. **Ground Truth intersection Criterion threshold** (cf. Definition 3 article)
     * Defines the amount of minimum overlap necessary to count a ground truth
-    correctly detected.
+    as correctly detected.
 
 3. **Cross-Trigger Tolerance Criterion threshold** (cf. Definition 4 article)
-    * Same as GTC, but applied to the system detections that intersect ground
+    * Same as DTC, but applied to the system detections that intersect ground
     truths of other classes of interest for detection, as distinct from false
     alarms which don’t intersect with any other label.
 
@@ -177,12 +184,12 @@ account several constraints:
 - The importance of **cross-triggers** can be specified in the effective False
 Positive Rate definition by the parameter `alpha_ct` (cf. Equation 6 article)
 
-- How important the **inter-class variability** is controlled in the definition of
+- The importance of **inter-class variability** is controlled in the definition of
 the effective True Positive Ratio by the parameter `alpha_st` (cf. Equation 9 article)
 
 - The maximum effective False Positive Rate at which the area under the PSD-ROC is
 computed can be adjusted by the parameter `max_efpr`. This value is crucial because
-defines an upper bound for the mistakes a system can make in a unit of time.
+it defines an upper bound for the mistakes a system can make in a unit of time.
 
 
 **Important notes:**
@@ -192,17 +199,17 @@ defines an upper bound for the mistakes a system can make in a unit of time.
 
 ### Why are multiple operating points required?
 We want to evaluate a system across a range of operating points in contrast with
-more classic metrics (such as F-Score or Accuracy). Such approach provides
+more classic metrics (such as F-Score or Accuracy). This approach provides
 an evaluation which is more generic and independent from the system's tuning.
 
 ### What is the minimum number of operating points required?
 It depends on how the system behaves. We encourage the user to start with at
 least 20 operating points and, based on how the PSD-ROC looks, more operating
-points can be added to represent the system behavior as accurately as possible.
+points can be added to represent the system behaviour as accurately as possible.
 
 ### Is it possible to remove the operating points for a new system evaluation?
 Yes, it is possible to remove all the previously added operating points by using
-the function `PSDSEval.clear_all_operating_points`. The evaluator is now ready
+the function `PSDSEval.clear_all_operating_points`. The evaluator is then ready
 to accept new operating points and compute a new evaluation.
 
 **Important notes:**
