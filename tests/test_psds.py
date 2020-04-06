@@ -155,11 +155,11 @@ def test_full_psds():
                          cttc_threshold=0.3, ground_truth=gt,
                          metadata=metadata)
 
-    # matrix (n_class, n_class) last col/row is world (for FP)
+    # matrix (n_class, n_class): axis 0 = gt, axis 1 = det
     exp_counts = np.array([
-        [1, 0, 0, 1],
+        [1, 0, 1, 1],
         [0, 1, 0, 1],
-        [1, 0, 1, 0],
+        [0, 0, 1, 0],
         [0, 0, 0, 0]
     ])
 

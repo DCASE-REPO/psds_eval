@@ -283,7 +283,22 @@ class PSDSEval:
         return tmp[dtc_filter & gtc_filter], dtc_ids
 
     def _evaluate_detections(self, tp, ct):
-        """Produces a confusion matrix and detection rates for all classes"""
+        """Produces the confusion matrix and per-class detection rates.
+
+        The first dimension of the confusion matrix (axis 0) represents the
+        system detections, while the second dimension (axis 1) represents the
+        ground truths.
+
+        Args:
+            tp (pandas.DataFrame): table of true positive detections that
+                satisfy both DTC and GTC
+            ct (pandas.DataFrame): table with cross-triggers (detections that
+                satisfy the CTTC)
+
+        Returns:
+            A tuple with confusion matrix, true positive ratios, false positive
+            rates and cross-trigger rates
+        """
         n_real_classes = len(self.class_names) - 1 # don't count WORLD
         counts = np.zeros([len(self.class_names), len(self.class_names)])
         tp_ratio = np.zeros(n_real_classes)
@@ -296,6 +311,7 @@ class PSDSEval:
         cls_names_world_end.append(WORLD)
         t_filter = self.ground_truth.event_label == WORLD
         dataset_dur = self.ground_truth[t_filter].duration.sum()
+        # Multi-indexed pandas.Series. Values are simply the overall item count
         ct_tmp = ct.groupby(["event_label_det",
                              "event_label_gt"]).filename.count()
         gt_dur = self.ground_truth.groupby("event_label").duration.sum()
@@ -307,16 +323,13 @@ class PSDSEval:
                 tp_ratio[i] = counts[i, i] / n_cls_gt[cls]
             for j, ocls in enumerate(cls_names_world_end):
                 try:
-                    counts[j, i] = ct_tmp[cls, ocls]
+                    counts[i, j] = ct_tmp[cls, ocls]
                 except KeyError:
                     pass
                 if ocls == WORLD:
-                    fp_rate[i] = counts[j, i] * self.nseconds / dataset_dur
+                    fp_rate[i] = counts[i, j] * self.nseconds / dataset_dur
                 elif j != i:
-                    ct_rate[j, i] = counts[j, i] * self.nseconds / gt_dur[ocls]
-        # move the FP in the last column
-        counts[:, -1] = counts[-1]
-        counts[-1] = 0
+                    ct_rate[i, j] = counts[i, j] * self.nseconds / gt_dur[ocls]
         return counts, tp_ratio, fp_rate, ct_rate
 
     def _cross_trigger_criterion(self, inter_t, tp_t, dtc_ids):
