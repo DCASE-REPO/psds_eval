@@ -56,6 +56,8 @@ class PSDSEval:
                 inferred from the ground truth table
             duration_unit: unit of time ('minute', 'hour', 'day', 'month',
                 'year') for FP/CT rates report
+            ground_truth (str): Path to the file containing ground truths.
+            metadata (str): Path to the file containing audio metadata
         Raises:
             PSDSEvalError: If any of the input values are incorrect.
         """
@@ -84,22 +86,25 @@ class PSDSEval:
             self.set_ground_truth(gt_t, meta_t)
 
     @staticmethod
-    def _validate_input_table(df, columns):
+    def _validate_input_table(df, columns, name, allow_empty=False):
         """Validates given pandas.DataFrame
 
         Args:
             df (pandas.DataFrame): to be validated
             columns (list): Column names that should be in the df
-
+            name (str): Name of the df. Only used when raising errors
+            allow_empty (bool): If False then an empty df will raise an error
         Raises:
             PSDSEvalError: If the df provided is invalid
         """
         if not isinstance(df, pd.DataFrame):
-            raise PSDSEvalError("The data must be provided in "
+            raise PSDSEvalError(f"The {name} data must be provided in "
                                 "a pandas.DataFrame")
         if not sorted(columns) == sorted(df.columns):
-            raise PSDSEvalError("The data columns need to match the following",
-                                columns)
+            raise PSDSEvalError(f"The {name} data columns need to match the "
+                                "following", columns)
+        if not allow_empty and df.empty:
+            raise PSDSEvalError(f"The {name} dataframe provided is empty")
 
     def num_operating_points(self):
         """Returns the number of operating point registered"""
@@ -138,8 +143,10 @@ class PSDSEval:
             raise PSDSEvalError("Audio metadata is required when adding "
                                 "ground truths")
 
-        self._validate_input_table(gt_t, self.detection_cols)
-        self._validate_input_table(meta_t, ["filename", "duration"])
+        self._validate_input_table(
+            gt_t, self.detection_cols, "ground truth", allow_empty=True)
+        self._validate_input_table(
+            meta_t, ["filename", "duration"], "metadata", allow_empty=False)
         _ground_truth = gt_t
         _metadata = meta_t
 
@@ -172,7 +179,8 @@ class PSDSEval:
         Returns:
             A tuple with the three validated and processed tables
         """
-        self._validate_input_table(det_t, self.detection_cols)
+        self._validate_input_table(
+            det_t, self.detection_cols, "detection", allow_empty=True)
         detection_t = det_t.sort_values(by=self.detection_cols[:2], axis=0)
         detection_t["duration"] = detection_t.offset - detection_t.onset
         detection_t["id"] = detection_t.index

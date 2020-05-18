@@ -72,6 +72,24 @@ def test_set_ground_truth_with_no_metadata():
         psds_eval.set_ground_truth(gt, None)
 
 
+def test_psds_with_empty_metadata():
+    """Check that an error is raised when empty metadata is provided"""
+    metadata = pd.read_csv(os.path.join(DATADIR, "empty.metadata"), sep="\t")
+    gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
+    with pytest.raises(PSDSEvalError,
+                       match="The metadata dataframe provided is empty"):
+        _ = PSDSEval(ground_truth=gt, metadata=metadata)
+
+
+def test_psds_with_empty_ground_truth():
+    """Prove that empty ground truth does not raise an error"""
+    metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
+    gt = pd.read_csv(os.path.join(DATADIR, "empty.gt"), sep="\t")
+    psds_eval = PSDSEval(ground_truth=gt, metadata=metadata)
+    assert isinstance(psds_eval.ground_truth, pd.DataFrame) is True
+    assert psds_eval.ground_truth.empty is False
+
+
 def test_setting_ground_truth_more_than_once():
     """Ensure that an error is raised when the ground truth is set twice"""
     gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
@@ -91,7 +109,7 @@ def test_set_ground_truth_with_bad_ground_truth(bad_data):
     """Setting the ground truth with invalid data must raise an error"""
     metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
     psds_eval = PSDSEval()
-    with pytest.raises(PSDSEvalError, match="The data must be "
+    with pytest.raises(PSDSEvalError, match="The ground truth data must be "
                                             "provided in a pandas.DataFrame"):
         psds_eval.set_ground_truth(bad_data, metadata)
 
@@ -101,7 +119,7 @@ def test_set_ground_truth_with_bad_metadata(bad_data):
     """Setting the ground truth with invalid metadata must raise an error"""
     gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
     psds_eval = PSDSEval()
-    with pytest.raises(PSDSEvalError, match="The data must be "
+    with pytest.raises(PSDSEvalError, match="The metadata data must be "
                                             "provided in a pandas.DataFrame"):
         psds_eval.set_ground_truth(gt, bad_data)
 
@@ -123,8 +141,9 @@ def test_add_operating_point_with_wrong_data_format():
     metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
     gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
     psds_eval = PSDSEval(metadata=metadata, ground_truth=gt)
-    with pytest.raises(PSDSEvalError, match="The data must be provided in a "
-                                            "pandas.DataFrame"):
+    with pytest.raises(PSDSEvalError,
+                       match="The detection data must be provided "
+                             "in a pandas.DataFrame"):
         psds_eval.add_operating_point(det)
 
 
@@ -136,8 +155,21 @@ def test_add_operating_point_with_empty_dataframe():
     gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
     psds_eval = PSDSEval(metadata=metadata, ground_truth=gt)
     with pytest.raises(PSDSEvalError,
-                       match="The data columns need to match the following"):
+                       match="The detection data columns need to "
+                             "match the following"):
         psds_eval.add_operating_point(det)
+
+
+def test_add_operating_point_with_zero_detections():
+    """An error must not be raised when there are no detections"""
+    det = pd.read_csv(os.path.join(DATADIR, "empty.det"), sep="\t")
+    metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
+    gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
+    psds_eval = PSDSEval(metadata=metadata, ground_truth=gt)
+    psds_eval.add_operating_point(det)
+    assert psds_eval.num_operating_points() == 1
+    assert psds_eval.operating_points["id"][0] == \
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 
 def test_that_add_operating_point_added_a_point():
