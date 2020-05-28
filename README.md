@@ -269,5 +269,13 @@ Simply contains the duration (in seconds) for each file in the dataset:
 - `metadata` and `ground_truth` tables must have the same unique values in the
 "filename" column
 
+### Is it possible to find an operating point which leads to the best F1-score?
+The `psds_eval` package provides a function called
+ `select_operating_points_per_class()` which can help find the operating
+  points which best satisfy the requested criteria on TPR, FPR, eFPR or F
+  -score for each class. Examples on how to use this function are provided
+   in the [example script](./examples/run_psds.py) and the [jupyter notebook
+   ](./jupyter/psds.ipynb).
+
 ## License
 psds\_eval is MIT licensed, as found in the [LICENSE](https://github.com/audioanalytic/psds_eval/blob/master/LICENSE) file.

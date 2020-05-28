@@ -181,7 +181,26 @@ def test_that_add_operating_point_added_a_point():
     psds_eval.add_operating_point(det)
     assert psds_eval.num_operating_points() == 1
     assert psds_eval.operating_points["id"][0] == \
-        "6f504797195d2df3bae13e416b8bf96ca89ec4e4e4d031dadadd72e382640387"
+        "423089ce6d6554174881f69f9d0e57a8be9f5bc682dfce301462a8753aa6ec5f"
+
+
+def test_adding_shuffled_operating_points():
+    """Avoid the addition of the same operating point after shuffling"""
+    det = pd.read_csv(os.path.join(DATADIR, "test_1.det"), sep="\t")
+    metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
+    gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
+    psds_eval = PSDSEval(metadata=metadata, ground_truth=gt)
+    psds_eval.add_operating_point(det)
+    det_shuffled = det.copy(deep=True)
+    det_shuffled = det_shuffled.sample(frac=1.).reset_index(drop=True)
+    psds_eval.add_operating_point(det_shuffled)
+    det_shuffled2 = det.copy(deep=True)
+    det_shuffled2 = det_shuffled2[["onset", "event_label", "offset",
+                                   "filename"]]
+    psds_eval.add_operating_point(det_shuffled2)
+    assert psds_eval.num_operating_points() == 1
+    assert psds_eval.operating_points["id"][0] == \
+        "423089ce6d6554174881f69f9d0e57a8be9f5bc682dfce301462a8753aa6ec5f"
 
 
 def test_full_psds():
@@ -226,3 +245,150 @@ def test_delete_ops():
 
     psds_eval.clear_all_operating_points()
     assert psds_eval.operating_points.empty
+
+
+def test_add_operating_points_with_info():
+    """Use info when adding operating points"""
+    metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
+    det1 = pd.read_csv(os.path.join(DATADIR, "test_1.det"), sep="\t")
+    det2 = pd.read_csv(os.path.join(DATADIR, "test_2.det"), sep="\t")
+    gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
+    info1 = {"name": "test_1", "threshold1": 1}
+    info2 = {"name": "test_2", "threshold2": 0}
+    psds_eval = PSDSEval(dtc_threshold=0.5, gtc_threshold=0.5,
+                         cttc_threshold=0.3, ground_truth=gt,
+                         metadata=metadata)
+    psds_eval.add_operating_point(det1, info=info1)
+    psds_eval.add_operating_point(det2, info=info2)
+    assert psds_eval.operating_points.name[0] == "test_1", \
+        "The info name is not correctly reported."
+    assert psds_eval.operating_points.name[1] == "test_2", \
+        "The info name is not correctly reported."
+    assert psds_eval.operating_points.threshold1[0] == 1, \
+        "The info threshold1 is not correctly reported."
+    assert psds_eval.operating_points.threshold2[1] == 0, \
+        "The info threshold2 is not correctly reported."
+    assert psds_eval.operating_points.threshold1.isna()[1], \
+        "The info threshold1 is not correctly reported."
+    assert psds_eval.operating_points.threshold2.isna()[0], \
+        "The info threshold2 is not correctly reported."
+
+
+def test_add_same_operating_point_with_different_info():
+    """Check the use of conflicting info for the same operating point"""
+    metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
+    det1 = pd.read_csv(os.path.join(DATADIR, "test_1.det"), sep="\t")
+    gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
+    info1 = {"name": "test_1", "threshold1": 1}
+    info2 = {"name": "test_1_2", "threshold2": 0}
+    psds_eval = PSDSEval(dtc_threshold=0.5, gtc_threshold=0.5,
+                         cttc_threshold=0.3, ground_truth=gt,
+                         metadata=metadata)
+    psds_eval.add_operating_point(det1, info=info1)
+    psds_eval.add_operating_point(det1, info=info2)
+    assert psds_eval.num_operating_points() == 1
+    assert psds_eval.operating_points.name[0] == "test_1", \
+        "The info name is not correctly reported."
+    assert psds_eval.operating_points.threshold1[0] == 1, \
+        "The info threshold1 is not correctly reported."
+    assert "threshold2" not in psds_eval.operating_points.columns, \
+        "The info of ignored operating point modified the operating " \
+        "points table."
+
+
+def test_add_operating_point_with_info_using_column_names():
+    """Check for non-permitted keys in the info"""
+    metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
+    det1 = pd.read_csv(os.path.join(DATADIR, "test_1.det"), sep="\t")
+    gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
+    info1 = {"counts": 0, "threshold1": 1}
+    psds_eval = PSDSEval(dtc_threshold=0.5, gtc_threshold=0.5,
+                         cttc_threshold=0.3, ground_truth=gt,
+                         metadata=metadata)
+
+    with pytest.raises(PSDSEvalError,
+                       match="the 'info' cannot contain the keys 'id', "
+                             "'counts', 'tpr', 'fpr' or 'ctr'"):
+        psds_eval.add_operating_point(det1, info=info1)
+
+
+def test_retrieve_desired_operating_point():
+    """Check if operating points can be found with requested constraints"""
+    metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
+    det1 = pd.read_csv(os.path.join(DATADIR, "test_1.det"), sep="\t")
+    det2 = pd.read_csv(os.path.join(DATADIR, "test_2.det"), sep="\t")
+    gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
+    info1 = {"name": "test_1", "threshold1": 1}
+    info2 = {"name": "test_2", "threshold2": 0}
+    psds_eval = PSDSEval(dtc_threshold=0.5, gtc_threshold=0.5,
+                         cttc_threshold=0.3, ground_truth=gt,
+                         metadata=metadata)
+    psds_eval.add_operating_point(det1, info=info1)
+    psds_eval.add_operating_point(det2, info=info2)
+    constraints = pd.DataFrame([
+        {"class_name": "c1", "constraint": "tpr", "value": 1.},
+        {"class_name": "c1", "constraint": "tpr", "value": 0.8},
+        {"class_name": "c2", "constraint": "fpr", "value": 13.},
+        {"class_name": "c3", "constraint": "efpr", "value": 240.},
+        {"class_name": "c3", "constraint": "efpr", "value": 26.},
+        {"class_name": "c1", "constraint": "fscore", "value": np.nan}])
+    chosen_op_points = \
+        psds_eval.select_operating_points_per_class(constraints, alpha_ct=1.,
+                                                    beta=1.)
+    assert chosen_op_points.name[0] == "test_1", \
+        "Correct operating point is not chosen for tpr criteria with equality"
+    assert chosen_op_points.name[1] == "test_1", \
+        "Correct operating point is not chosen for tpr criteria with " \
+        "inequality"
+    assert chosen_op_points.name[2] == "test_1", \
+        "Correct operating point is not chosen for fpr criteria with " \
+        "inequality"
+    assert chosen_op_points.name[3] == "test_1", \
+        "Correct operating point is not chosen for efpr criteria with " \
+        "equality"
+    assert chosen_op_points.name[4] == "test_1", \
+        "Correct operating point is not chosen for efpr criteria with " \
+        "inequality"
+    assert chosen_op_points.name[5] == "test_1", \
+        "Correct operating point is not chosen for fscore criteria"
+    assert chosen_op_points.Fscore[5] == pytest.approx(2./3.), \
+        "Correct operating point is not chosen for fscore criteria"
+
+
+def test_impossible_constraint_check():
+    metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
+    det1 = pd.read_csv(os.path.join(DATADIR, "test_1.det"), sep="\t")
+    gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
+    info1 = {"name": "test_1", "threshold1": 1}
+    psds_eval = PSDSEval(dtc_threshold=0.5, gtc_threshold=0.5,
+                         cttc_threshold=0.3, ground_truth=gt,
+                         metadata=metadata)
+    psds_eval.add_operating_point(det1, info=info1)
+    constraints = pd.DataFrame([
+        {"class_name": "c2", "constraint": "fpr", "value": 11.},
+        {"class_name": "c1", "constraint": "tpr", "value": 1.1}])
+    chosen_op_points = \
+        psds_eval.select_operating_points_per_class(constraints, alpha_ct=1.,
+                                                    beta=1.)
+    assert np.isnan(chosen_op_points.TPR[0]), \
+        "NaN value is not returned for 0, 0 operating point"
+    assert np.isnan(chosen_op_points.TPR[1]), \
+        "NaN value is not returned for non-existing operating point"
+
+
+def test_unknown_class_constraint_check():
+    metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
+    det1 = pd.read_csv(os.path.join(DATADIR, "test_1.det"), sep="\t")
+    gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
+    info1 = {"name": "test_1", "threshold1": 1}
+    psds_eval = PSDSEval(dtc_threshold=0.5, gtc_threshold=0.5,
+                         cttc_threshold=0.3, ground_truth=gt,
+                         metadata=metadata)
+    psds_eval.add_operating_point(det1, info=info1)
+    constraints = pd.DataFrame([
+        {"class_name": "class1", "constraint": "tpr", "value": 1.}])
+
+    with pytest.raises(PSDSEvalError,
+                       match="Unknown class: class1"):
+        psds_eval.select_operating_points_per_class(constraints,
+                                                    alpha_ct=1., beta=1.)
