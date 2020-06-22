@@ -1,3 +1,7 @@
+# Release 0.3.0
+- Allow user to insert information per operating point
+- Retrieve operating points based on given criteria
+
 # Release 0.2.0
 
 ## Features
