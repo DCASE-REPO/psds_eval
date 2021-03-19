@@ -124,6 +124,25 @@ def test_set_ground_truth_with_bad_metadata(bad_data):
         psds_eval.set_ground_truth(gt, bad_data)
 
 
+@pytest.mark.parametrize("table_name,raise_error",
+                         [("test_1_overlap.gt", True),
+                          ("test_1_nonoverlap.gt", False)])
+def test_set_ground_truth_with_overlapping_events(table_name, raise_error):
+    """Gronud truth with overlapping events must raise an error"""
+    metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
+    gt = pd.read_csv(os.path.join(DATADIR, table_name), sep="\t")
+    psds_eval = PSDSEval()
+    if raise_error:
+        with pytest.raises(
+                PSDSEvalError,
+                match="The ground truth dataframe provided has intersecting "
+                      "events/labels for the same class."):
+            psds_eval.set_ground_truth(gt, metadata)
+    else:
+        psds_eval.set_ground_truth(gt, metadata)
+        assert isinstance(psds_eval.ground_truth, pd.DataFrame) is True
+
+
 def test_add_operating_point_with_no_metadata():
     """Ensure that add_operating_point raises an error when metadata is none"""
     det = pd.read_csv(os.path.join(DATADIR, "test_1.det"), sep="\t")
@@ -170,6 +189,28 @@ def test_add_operating_point_with_zero_detections():
     assert psds_eval.num_operating_points() == 1
     assert psds_eval.operating_points["id"][0] == \
         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+
+@pytest.mark.parametrize("table_name,raise_error",
+                         [("test_1_overlap.det", True),
+                          ("test_1_nonoverlap.det", False)])
+def test_add_operating_points_with_overlapping_events(table_name, raise_error):
+    """Detections with overlapping events must raise an error"""
+    metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
+    det = pd.read_csv(os.path.join(DATADIR, table_name), sep="\t")
+    gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
+    psds_eval = PSDSEval(dtc_threshold=0.5, gtc_threshold=0.5,
+                         cttc_threshold=0.3, ground_truth=gt,
+                         metadata=metadata)
+    if raise_error:
+        with pytest.raises(
+                PSDSEvalError,
+                match="The detection dataframe provided has intersecting "
+                      "events/labels for the same class."):
+            psds_eval.add_operating_point(det)
+    else:
+        psds_eval.add_operating_point(det)
+        assert psds_eval.num_operating_points() == 1
 
 
 def test_that_add_operating_point_added_a_point():

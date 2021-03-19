@@ -30,12 +30,13 @@ def test_compute_f_score(metadata):
                          cttc_threshold=0.3, ground_truth=gt_t,
                          metadata=metadata)
     f_avg, per_class_f = psds_eval.compute_macro_f_score(det_t)
-    expected_class_f = [0.7752161383285303, 0.7421383647798742,
-                        0.548936170212766, 0.44747612551159616,
+    expected_class_f = [0.7752161383285303, 0.7468354430379747,
+                        0.548936170212766, 0.39943342776203966,
                         0.6548881036513545, 0.7663551401869159,
                         0.9405405405405406, 0.6978021978021978,
-                        0.7102941176470589, 0.8427672955974843]
-    assert f_avg == pytest.approx(0.712641), "The average F-score was incorrect"
+                        0.7105553512320706, 0.8427672955974843]
+    assert f_avg == pytest.approx(0.7083329808351875), \
+        "The average F-score was incorrect"
     for exp_f, class_f in zip(expected_class_f, per_class_f.values()):
         assert exp_f == pytest.approx(class_f), "Per-class F-score incorrect"
 
@@ -56,12 +57,13 @@ def test_compute_f_score_gt_later(metadata):
                          cttc_threshold=0.3)
     psds_eval.set_ground_truth(gt_t, metadata)
     f_avg, per_class_f = psds_eval.compute_macro_f_score(det_t)
-    expected_class_f = [0.7752161383285303, 0.7421383647798742,
-                        0.548936170212766, 0.44747612551159616,
+    expected_class_f = [0.7752161383285303, 0.7468354430379747,
+                        0.548936170212766, 0.39943342776203966,
                         0.6548881036513545, 0.7663551401869159,
                         0.9405405405405406, 0.6978021978021978,
-                        0.7102941176470589, 0.8427672955974843]
-    assert f_avg == pytest.approx(0.712641), "The average F-score was incorrect"
+                        0.7105553512320706, 0.8427672955974843]
+    assert f_avg == pytest.approx(0.7083329808351875), \
+        "The average F-score was incorrect"
     for exp_f, class_f in zip(expected_class_f, per_class_f.values()):
         assert exp_f == pytest.approx(class_f), "Per-class F-score incorrect"
 

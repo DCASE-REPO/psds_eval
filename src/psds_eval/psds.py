@@ -86,7 +86,7 @@ class PSDSEval:
             self.set_ground_truth(gt_t, meta_t)
 
     @staticmethod
-    def _validate_input_table(df, columns, name, allow_empty=False):
+    def _validate_simple_dataframe(df, columns, name, allow_empty=False):
         """Validates given pandas.DataFrame
 
         Args:
@@ -105,6 +105,29 @@ class PSDSEval:
                                 "following", columns)
         if not allow_empty and df.empty:
             raise PSDSEvalError(f"The {name} dataframe provided is empty")
+
+    def _validate_input_table_with_events(self, df, name):
+        """Validates given pandas.DataFrame with events
+
+        Args:
+            df (pandas.DataFrame): to be validated
+            name (str): Name of the df. Only used when raising errors
+        Raises:
+            PSDSEvalError: If the df provided is invalid, has overlapping
+                events from the same class or has offset happening after onset.
+        """
+        self._validate_simple_dataframe(df, self.detection_cols, name,
+                                        allow_empty=True)
+        if not df.empty:
+            if not df[df.onset > df.offset].empty:
+                raise PSDSEvalError(f"The {name} dataframe provided has "
+                                    f"events with onset > offset.")
+            intersections = self._get_table_intersections(
+                df, df, suffixes=("_1", "_2"), remove_identical=True)
+            if not intersections[intersections.same_cls].empty:
+                raise PSDSEvalError(f"The {name} dataframe provided has "
+                                    f"intersecting events/labels for the "
+                                    f"same class.")
 
     def num_operating_points(self):
         """Returns the number of operating point registered"""
@@ -143,12 +166,14 @@ class PSDSEval:
             raise PSDSEvalError("Audio metadata is required when adding "
                                 "ground truths")
 
-        self._validate_input_table(
-            gt_t, self.detection_cols, "ground truth", allow_empty=True)
-        self._validate_input_table(
-            meta_t, ["filename", "duration"], "metadata", allow_empty=False)
-        _ground_truth = gt_t
-        _metadata = meta_t
+        self._validate_input_table_with_events(
+            gt_t, "ground truth")
+        self._validate_simple_dataframe(
+            meta_t, ["filename", "duration"], "metadata")
+        # we re-index the tables in case some invalid indexes (indexes
+        # with repeated index values) are given
+        _ground_truth = gt_t.reset_index(inplace=False, drop=True)
+        _metadata = meta_t.reset_index(inplace=False, drop=True)
 
         # remove duplicated entries (possible mistake in its generation?)
         _metadata = _metadata.drop_duplicates("filename")
@@ -156,6 +181,9 @@ class PSDSEval:
         _ground_truth = self._update_world_detections(self.detection_cols,
                                                       _ground_truth,
                                                       metadata_t)
+        # remove zero-length events
+        _ground_truth = _ground_truth[_ground_truth.offset >
+                                      _ground_truth.onset]
         ground_truth_t = _ground_truth.sort_values(by=self.detection_cols[:2],
                                                    axis=0)
         ground_truth_t.dropna(inplace=True)
@@ -179,8 +207,13 @@ class PSDSEval:
         Returns:
             A tuple with the three validated and processed tables
         """
-        self._validate_input_table(
-            det_t, self.detection_cols, "detection", allow_empty=True)
+        self._validate_input_table_with_events(
+            det_t, "detection")
+        # we re-index the detection table in case invalid indexes (indexes
+        # with repeated index values) are given
+        det_t = det_t.reset_index(inplace=False, drop=True)
+        # remove zero-length or invalid events
+        det_t = det_t[det_t.offset > det_t.onset]
         detection_t = det_t.sort_values(by=self.detection_cols[:2], axis=0)
         detection_t["duration"] = detection_t.offset - detection_t.onset
         detection_t["id"] = detection_t.index
@@ -224,7 +257,43 @@ class PSDSEval:
         return uid
 
     @staticmethod
-    def _ground_truth_intersections(detection_t, ground_truth_t):
+    def _get_table_intersections(table1, table2, suffixes=("_1", "_2"),
+                                 remove_identical=False):
+        """Creates a table of intersecting events/labels in two tables
+
+        Returns:
+            A pandas table with intersecting events with columns of given
+            suffixes from each input table. A boolean "same_cls" column
+            indicates if intersecting events have the same class. If
+            remove_identical=True, identical events from both tables are not
+            considered.
+        """
+        comb_t = pd.merge(table1, table2,
+                          how='outer', on='filename',
+                          suffixes=suffixes)
+        # intersect_t contains detections/labels in the first table that
+        # intersect one or more detections/labels in the second table
+        # with non-zero intersections
+        intersect_t = comb_t[
+            (comb_t["onset" + suffixes[0]] < comb_t["offset" + suffixes[1]]) &
+            (comb_t["onset" + suffixes[1]] < comb_t["offset" + suffixes[0]]) &
+            comb_t.filename.notna()].copy(deep=True)
+        if remove_identical:
+            intersect_t = intersect_t[
+                (intersect_t["onset" + suffixes[0]] !=
+                 intersect_t["onset" + suffixes[1]]) |
+                (intersect_t["offset" + suffixes[1]] !=
+                 intersect_t["offset" + suffixes[0]]) |
+                (intersect_t["event_label" + suffixes[0]] !=
+                 intersect_t["event_label" + suffixes[1]])]
+        # Add a flag to show that labels/events from the first and second
+        # tables are of the same class
+        intersect_t["same_cls"] = (
+                intersect_t["event_label" + suffixes[0]] ==
+                intersect_t["event_label" + suffixes[1]])
+        return intersect_t
+
+    def _ground_truth_intersections(self, detection_t, ground_truth_t):
         """Creates a table to represent the ground truth intersections
 
         Returns:
@@ -235,16 +304,8 @@ class PSDSEval:
                 gt_coverage: measures what proportion of a ground truth
                     is covered by one or more detections of the same class
         """
-
-        comb_t = pd.merge(detection_t, ground_truth_t,
-                          how='outer', on='filename',
-                          suffixes=("_det", "_gt"))
-        # cross_t contains detections that intersect one or more ground truths
-        cross_t = comb_t[(comb_t.onset_det <= comb_t.offset_gt) &
-                         (comb_t.onset_gt <= comb_t.offset_det) &
-                         comb_t.filename.notna()].copy(deep=True)
-        # Add a flag to show that GT and Event labels are of the same class
-        cross_t["same_cls"] = cross_t.event_label_det == cross_t.event_label_gt
+        cross_t = self._get_table_intersections(
+            detection_t, ground_truth_t, suffixes=("_det", "_gt"))
 
         cross_t["inter_duration"] = \
             np.minimum(cross_t.offset_det, cross_t.offset_gt) - \
@@ -736,10 +797,10 @@ class PSDSEval:
                 table
         """
 
-        self._validate_input_table(class_constraints,
-                                   columns=["class_name", "constraint",
-                                            "value"],
-                                   name="constraints")
+        self._validate_simple_dataframe(
+            class_constraints,
+            columns=["class_name", "constraint", "value"],
+            name="constraints")
         pcr = self._effective_fp_rate(alpha_ct)
         class_names_no_world = sorted(
             set(self.class_names).difference([WORLD]))

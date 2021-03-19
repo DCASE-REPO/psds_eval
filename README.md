@@ -148,7 +148,7 @@ Python script from the examples folder like so:
 ```
 $ python examples/run_psds.py
 ```
-The script should output a PSD-Score value of **0.40813** and the plot below.
+The script should output a PSD-Score value of **0.40867** and the plot below.
 
 ![Fig: PSD ROC from example code](https://raw.githubusercontent.com/audioanalytic/psds_eval/master/examples/data/psd_roc.png)
 
