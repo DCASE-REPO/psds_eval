@@ -844,7 +844,7 @@ class PSDSEval:
                 _filter_arr = tpr
                 _filter_op = np.argmax
             elif constraint == "fscore":
-                _filter = np.ones(tpr.shape, dtype=np.bool)
+                _filter = np.ones(tpr.shape, dtype=bool)
                 _filter_arr = f_scores
                 _filter_op = np.argmax
             else:

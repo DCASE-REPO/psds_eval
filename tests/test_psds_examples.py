@@ -17,7 +17,7 @@ def metadata():
 
 def create_repeated_indexes_in_dataframe(df):
     """Create indexes with repeated values in DataFrame"""
-    df["index"] = np.arange(df.shape[0]).astype(np.int)
+    df["index"] = np.arange(df.shape[0]).astype(int)
     df.loc[0, "index"] = df.shape[0]
     df.loc[1, "index"] = 2
     df = df.set_index("index")
