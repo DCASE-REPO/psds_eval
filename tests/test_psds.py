@@ -101,6 +101,29 @@ def test_setting_ground_truth_more_than_once():
         psds_eval.set_ground_truth(gt_t=gt, meta_t=metadata)
 
 
+def test_setting_ground_truth_and_metadata_with_extra_columns():
+    gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
+    gt["extra_gt_col"] = True
+    assert len(gt.columns) > len(PSDSEval.detection_cols), \
+        "There should be more columns in this test"
+    metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
+    metadata["additional_info"] = "VALID"
+    expected_metadata_cols = ["filename", "duration"]
+    assert len(metadata.columns) > len(expected_metadata_cols), \
+        "There are too few metadata columns for this test"
+    psds_eval = PSDSEval(metadata=metadata, ground_truth=gt)
+
+    expected_gt_cols = [
+        "filename", "onset", "offset", "event_label", "duration", "id"
+    ]
+    np.testing.assert_array_equal(
+        psds_eval.ground_truth.columns, expected_gt_cols
+    )
+    np.testing.assert_array_equal(
+        psds_eval.metadata.columns, expected_metadata_cols
+    )
+
+
 BAD_GT_DATA = [[], (0.12, 8), float("-inf"), {"gt": [7, 2]}]
 
 

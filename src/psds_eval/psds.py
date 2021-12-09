@@ -116,8 +116,9 @@ class PSDSEval:
             PSDSEvalError: If the df provided is invalid, has overlapping
                 events from the same class or has offset happening after onset.
         """
-        self._validate_simple_dataframe(df, self.detection_cols, name,
-                                        allow_empty=True)
+        self._validate_simple_dataframe(
+            df, self.detection_cols, name, allow_empty=True
+        )
         if not df.empty:
             if not df[df.onset > df.offset].empty:
                 raise PSDSEvalError(f"The {name} dataframe provided has "
@@ -154,8 +155,10 @@ class PSDSEval:
         Args:
             gt_t (pandas.DataFrame): A table of ground truths
             meta_t (pandas.DataFrame): A table of audio metadata information
+
         Raises:
             PSDSEvalError if there is an issue with the input data
+
         """
         if self.ground_truth is not None or self.metadata is not None:
             raise PSDSEvalError("You cannot set the ground truth more than"
@@ -166,14 +169,15 @@ class PSDSEval:
             raise PSDSEvalError("Audio metadata is required when adding "
                                 "ground truths")
 
-        self._validate_input_table_with_events(
-            gt_t, "ground truth")
-        self._validate_simple_dataframe(
-            meta_t, ["filename", "duration"], "metadata")
-        # we re-index the tables in case some invalid indexes (indexes
-        # with repeated index values) are given
-        _ground_truth = gt_t.reset_index(inplace=False, drop=True)
-        _metadata = meta_t.reset_index(inplace=False, drop=True)
+        self._validate_input_table_with_events(gt_t, "ground truth")
+        metadata_cols = ["filename", "duration"]
+        self._validate_simple_dataframe(meta_t, metadata_cols, "metadata")
+
+        # re-indexing is done to protect against duplicate indexes
+        _ground_truth = gt_t[self.detection_cols].reset_index(
+            inplace=False, drop=True
+        )
+        _metadata = meta_t[metadata_cols].reset_index(inplace=False, drop=True)
 
         # remove duplicated entries (possible mistake in its generation?)
         _metadata = _metadata.drop_duplicates("filename")
