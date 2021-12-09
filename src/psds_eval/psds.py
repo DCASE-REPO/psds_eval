@@ -399,14 +399,17 @@ class PSDSEval:
                 satisfy the CTTC)
 
         Returns:
-            A tuple with confusion matrix, true positive ratios, false positive
-            rates and cross-trigger rates
+            A tuple with confusion matrix, true positive ratios, false
+            positive rates and cross-trigger rates. Note that the
+            cross-trigger rate array will contain NaN values along its
+            diagonal.
+
         """
         n_real_classes = len(self.class_names) - 1  # don't count WORLD
         counts = np.zeros([len(self.class_names), len(self.class_names)])
-        tp_ratio = np.zeros(n_real_classes)
-        fp_rate = np.zeros(n_real_classes)
-        ct_rate = np.zeros((n_real_classes, n_real_classes))
+        tp_ratio = np.empty(n_real_classes)
+        fp_rate = np.empty(n_real_classes)
+        ct_rate = np.full((n_real_classes, n_real_classes), np.nan)
         # Create an ordered set of class names without world
         class_names_set_no_world = set(self.class_names).difference([WORLD])
         # Create an ordered set of class names with world at the end
@@ -675,9 +678,9 @@ class PSDSEval:
         fpr_points = np.unique(np.sort(pcr.fp_rate.flatten()))
         efpr_points = np.unique(np.sort(pcr.effective_fp_rate.flatten()))
         ctr_points = np.unique(np.sort(pcr.ct_rate.flatten()))
-        tpr_v_fpr = np.zeros((n_classes, fpr_points.size))
-        tpr_v_efpr = np.zeros((n_classes, efpr_points.size))
-        tpr_v_ctr = np.zeros((n_classes, n_classes, ctr_points.size))
+        tpr_v_fpr = np.full((n_classes, fpr_points.size), np.nan)
+        tpr_v_efpr = np.full((n_classes, efpr_points.size), np.nan)
+        tpr_v_ctr = np.full((n_classes, n_classes, ctr_points.size), np.nan)
 
         _curve = self.perform_interp if linear_interp else self.step_curve
         for c in range(n_classes):
@@ -690,20 +693,21 @@ class PSDSEval:
                 tpr_v_ctr[c, k] = _curve(ctr_points, pcr.ct_rate[c, k],
                                          pcr.tp_ratio[c])
 
-        tpr_vs_fpr_c = PSDROC(yp=tpr_v_fpr, xp=fpr_points,
-                              mean=np.nanmean(tpr_v_fpr, axis=0),
-                              std=np.nanstd(tpr_v_fpr, axis=0))
-        tpr_vs_efpr_c = PSDROC(yp=tpr_v_efpr, xp=efpr_points,
-                               mean=np.nanmean(tpr_v_efpr, axis=0),
-                               std=np.nanstd(tpr_v_efpr, axis=0))
-        tpr_vs_ctr_c = PSDROC(yp=tpr_v_ctr, xp=ctr_points,
-                              mean=np.nanmean(
-                                  tpr_v_ctr.reshape([-1, ctr_points.size]),
-                                  axis=0),
-                              std=np.nanstd(
-                                  tpr_v_ctr.reshape([-1, ctr_points.size]),
-                                  axis=0))
-
+        tpr_vs_fpr_c = PSDROC(
+            yp=tpr_v_fpr, xp=fpr_points,
+            mean=np.nanmean(tpr_v_fpr, axis=0),
+            std=np.nanstd(tpr_v_fpr, axis=0)
+        )
+        tpr_vs_efpr_c = PSDROC(
+            yp=tpr_v_efpr, xp=efpr_points,
+            mean=np.nanmean(tpr_v_efpr, axis=0),
+            std=np.nanstd(tpr_v_efpr, axis=0)
+        )
+        tpr_vs_ctr_c = PSDROC(
+            yp=tpr_v_ctr, xp=ctr_points,
+            mean=np.nanmean(tpr_v_ctr.reshape([-1, ctr_points.size]), axis=0),
+            std=np.nanstd(tpr_v_ctr.reshape([-1, ctr_points.size]), axis=0)
+        )
         return tpr_vs_fpr_c, tpr_vs_ctr_c, tpr_vs_efpr_c
 
     @staticmethod
@@ -885,20 +889,22 @@ class PSDSEval:
         """Calculates the effective true positive rate (eTPR)
 
         Reduces a set of class ROC curves into a single Polyphonic
-        Sound Detection (PSD) ROC curve.
+        Sound Detection (PSD) ROC curve. If NaN values are present they
+        will be converted to zero.
 
         Args:
-            tpr_efpr (numpy.ndarray): A ROC that describes the PSD-ROC
-                for all classes
-            alpha_st (numpy.ndarray): A weighting applied to the
+            tpr_efpr (PSDROC): A ROC that describes the PSD-ROC for
+                all classes
+            alpha_st (float): A weighting applied to the
                 inter-class variability
 
         Returns:
             PSDROC: A namedTuple that describes the PSD-ROC used for the
-            calculation of PSDS.
+                calculation of PSDS.
         """
         etpr = tpr_efpr.mean - alpha_st * tpr_efpr.std
-        etpr[etpr < 0] = 0.0
+        np.nan_to_num(etpr, copy=False, nan=0.0)
+        etpr = np.where(etpr < 0, 0.0, etpr)
         return PSDROC(xp=tpr_efpr.xp, yp=etpr, std=tpr_efpr.std,
                       mean=tpr_efpr.mean)
 
@@ -1083,7 +1089,7 @@ def plot_per_class_psd_roc(psd, class_names, max_efpr=None,
 
     axes.set_ylim([0, 1.0])
     if max_efpr is None:
-        max_efpr = psd.xp.max()
+        max_efpr = np.max(np.nan_to_num(psd.xp))
     axes.set_xlim([0, kwargs.get("xlim", max_efpr)])
     axes.legend()
     axes.set_xlabel(kwargs.get("xlabel", "(e)FPR"))

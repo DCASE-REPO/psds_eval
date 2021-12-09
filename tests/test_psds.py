@@ -290,6 +290,10 @@ def test_full_psds():
     psds = psds_eval.psds(0.0, 0.0, 100.0)
     assert psds.value == pytest.approx(0.9142857142857143), \
         "PSDS was calculated incorrectly"
+    np.testing.assert_almost_equal(psds.plt.xp, np.array([0, 12.85714286]))
+    np.testing.assert_almost_equal(psds.plt.yp, np.array([1/3, 1.0]))
+    np.testing.assert_almost_equal(psds.plt.mean, np.array([1/3, 1.0]))
+    np.testing.assert_almost_equal(psds.plt.std, np.array([0.47140452, 0.0]))
 
 
 def test_delete_ops():
