@@ -1,4 +1,11 @@
-# Release 0.4.0
+# Release 0.5.0
+
+## Bug fixes
+- Operating point arrays are initialised with np.nan
+- Ground Truth and Metadata tables drop extra columns
+- Fixed Numpy type deprecation warnings
+
+## Release 0.4.0
 
 ## Bug fixes
 - input tables with invalid indexes no longer create issues 
