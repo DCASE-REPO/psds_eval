@@ -170,14 +170,14 @@ class PSDSEval:
                                 "ground truths")
 
         self._validate_input_table_with_events(gt_t, "ground truth")
-        metadata_cols = ["filename", "duration"]
-        self._validate_simple_dataframe(meta_t, metadata_cols, "metadata")
+        self._validate_simple_dataframe(
+            meta_t, ["filename", "duration"], "metadata")
 
         # re-indexing is done to protect against duplicate indexes
         _ground_truth = gt_t[self.detection_cols].reset_index(
             inplace=False, drop=True
         )
-        _metadata = meta_t[metadata_cols].reset_index(inplace=False, drop=True)
+        _metadata = meta_t.reset_index(inplace=False, drop=True)
 
         # remove duplicated entries (possible mistake in its generation?)
         _metadata = _metadata.drop_duplicates("filename")

@@ -1,3 +1,8 @@
+# Release 0.5.1
+
+## Bug fixes
+- Custom metadata columns are not filtered out
+
 # Release 0.5.0
 
 ## Bug fixes
@@ -5,7 +10,7 @@
 - Ground Truth and Metadata tables drop extra columns
 - Fixed Numpy type deprecation warnings
 
-## Release 0.4.0
+# Release 0.4.0
 
 ## Bug fixes
 - input tables with invalid indexes no longer create issues 

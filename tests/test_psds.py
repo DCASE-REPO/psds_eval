@@ -102,25 +102,22 @@ def test_setting_ground_truth_more_than_once():
 
 
 def test_setting_ground_truth_and_metadata_with_extra_columns():
+    # Ground Truth
     gt = pd.read_csv(os.path.join(DATADIR, "test_1.gt"), sep="\t")
-    gt["extra_gt_col"] = True
-    assert len(gt.columns) > len(PSDSEval.detection_cols), \
-        "There should be more columns in this test"
-    metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
-    metadata["additional_info"] = "VALID"
-    expected_metadata_cols = ["filename", "duration"]
-    assert len(metadata.columns) > len(expected_metadata_cols), \
-        "There are too few metadata columns for this test"
-    psds_eval = PSDSEval(metadata=metadata, ground_truth=gt)
+    gt["extra_gt_col"] = True  # This column should be removed
 
-    expected_gt_cols = [
-        "filename", "onset", "offset", "event_label", "duration", "id"
-    ]
+    # Metadata
+    metadata = pd.read_csv(os.path.join(DATADIR, "test.metadata"), sep="\t")
+    metadata["additional_info"] = "VALID"  # This column should NOT be removed
+
+    psds_eval = PSDSEval(metadata=metadata, ground_truth=gt)
     np.testing.assert_array_equal(
-        psds_eval.ground_truth.columns, expected_gt_cols
+        psds_eval.ground_truth.columns,
+        ["filename", "onset", "offset", "event_label", "duration", "id"]
     )
     np.testing.assert_array_equal(
-        psds_eval.metadata.columns, expected_metadata_cols
+        psds_eval.metadata.columns,
+        ["filename", "duration", "additional_info"]
     )
 
 
@@ -460,3 +457,43 @@ def test_unknown_class_constraint_check():
                        match="Unknown class: class1"):
         psds_eval.select_operating_points_per_class(constraints,
                                                     alpha_ct=1., beta=1.)
+
+
+def test_custom_metadata_columns_do_not_cause_errors():
+    # See https://github.com/audioanalytic/psds_eval/issues/4 for a more
+    # extensive explanation of the issue this test is ensuring is fixed.
+    gt = pd.DataFrame(
+        {
+            'filename': 'a.wav',
+            'onset': 0.,
+            'offset': 4.,
+            'event_label': 'fake',
+            'whoops': 1
+        },
+        index=[0])
+    durations = pd.DataFrame(
+        {
+            'filename': 'a.wav',
+            'duration': 10.
+        },
+        index=[0])
+
+    psds = PSDSEval(
+        ground_truth=gt,
+        metadata=durations,
+        dtc_threshold=0.5,
+        gtc_threshold=0.5,
+        cttc_threshold=0.5,
+    )
+
+    detections = pd.DataFrame(
+        {
+            'filename': 'a.wav',
+            'onset': 0.,
+            'offset': 2.,
+            'event_label': 'fake'
+        },
+        index=[0])
+
+    # Just run and make sure it doesn't raise an error
+    psds.compute_macro_f_score(detections)
