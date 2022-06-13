@@ -1,7 +1,8 @@
-# Release 0.5.1
+# Release 0.5.2
 
 ## Bug fixes
 - Custom metadata columns are not filtered out
+- Fixed Pandas FutureDeprecation warning on frame.append
 
 # Release 0.5.0
 

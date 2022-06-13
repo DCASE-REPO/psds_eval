@@ -1,3 +1,4 @@
+import typing
 from warnings import warn
 import pandas as pd
 import numpy as np
@@ -237,7 +238,8 @@ class PSDSEval:
              } for i in metadata.index
         ]
         if len(world_gt):
-            ground_truth = ground_truth.append(world_gt, ignore_index=True)
+            ground_truth = pd.concat(
+                [ground_truth, pd.DataFrame(world_gt)], ignore_index=True)
         return ground_truth
 
     def _operating_point_id(self, detection_table):
@@ -548,8 +550,8 @@ class PSDSEval:
 
         if set(op.keys()).isdisjoint(set(info.keys())):
             op.update(info)
-            self.operating_points = \
-                self.operating_points.append(op, ignore_index=True)
+            self.operating_points = pd.concat(
+                [self.operating_points, pd.DataFrame([op])], ignore_index=True)
         else:
             raise PSDSEvalError("the 'info' cannot contain the keys 'id', "
                                 "'counts', 'tpr', 'fpr' or 'ctr'")
@@ -816,7 +818,7 @@ class PSDSEval:
         _op_points_t_cols.extend(self.operating_points.columns)
         for col in ["id", "counts", "tpr", "fpr", "ctr"]:
             _op_points_t_cols.remove(col)
-        _op_points_t = pd.DataFrame(columns=_op_points_t_cols)
+        _op_points: typing.List[pd.DataFrame] = list()
 
         n_cls_gt = self._get_dataset_counts()
         gt_dur, dataset_dur = self._get_dataset_duration()
@@ -879,10 +881,10 @@ class PSDSEval:
                     _op_points_t_cols[5:]]
                 chosen_op_point_dict.update(
                     chosen_op_point.to_dict(orient="records")[0])
-            _op_points_t = \
-                _op_points_t.append(chosen_op_point_dict,
-                                    ignore_index=True)
-        return _op_points_t
+            _op_points.append(pd.DataFrame(
+                [chosen_op_point_dict], columns=_op_points_t_cols))
+
+        return pd.concat(_op_points, ignore_index=True)
 
     @staticmethod
     def _effective_tp_ratio(tpr_efpr, alpha_st):
