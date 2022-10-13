@@ -46,7 +46,7 @@ read the paper accessible from the link above.
    foreground rectangles represent the system detections. Vertical dashed lines
    simulate how the ground truth boundaries are affected by the collar.
 
-   ![Fig: Event Detection](https://raw.githubusercontent.com/audioanalytic/psds_eval/master/examples/data/def_evtdet.jpg)
+   ![Fig: Event Detection](https://raw.githubusercontent.com/DCASE-REPO/psds_eval/master/examples/data/def_evtdet.jpg)
 
 2. **Cross-triggers**
 
@@ -55,7 +55,7 @@ read the paper accessible from the link above.
    below in which ground truths and detections are indicated by background and
    foreground rectangles, respectively.
 
-   ![Fig: CT Example](https://raw.githubusercontent.com/audioanalytic/psds_eval/master/examples/data/ct_example.jpg)
+   ![Fig: CT Example](https://raw.githubusercontent.com/DCASE-REPO/psds_eval/master/examples/data/ct_example.jpg)
 
    Detections 1 and 3 are clearly true positives (TP) while detections 2 and 4
    are false positives (FP). In addition to this, PSDS also counts detection 4
@@ -95,7 +95,7 @@ read the paper accessible from the link above.
    given that for a similar false positive rate the system can achieve a
    significantly higher true positive rate if tuned to *B*.
 
-   ![Fig: PSD ROC Curve](https://raw.githubusercontent.com/audioanalytic/psds_eval/master/examples/data/psd_roc_2.png)
+   ![Fig: PSD ROC Curve](https://raw.githubusercontent.com/DCASE-REPO/psds_eval/master/examples/data/psd_roc_2.png)
 
    An evaluation based on multiple OPs provides a better understanding of the
    system performance at different TP/FP trade-offs.
@@ -117,7 +117,7 @@ read the paper accessible from the link above.
 
 ## Installation
 In order to install the `psds_eval` package:
-1. Clone the repository `git clone https://github.com/audioanalytic/psds_eval.git`
+1. Clone the repository `git clone https://github.com/DCASE-REPO/psds_eval.git`
 2. `cd psds_eval`
 3. `pip install -Ue .`
 
@@ -150,7 +150,7 @@ $ python examples/run_psds.py
 ```
 The script should output a PSD-Score value of **0.40867** and the plot below.
 
-![Fig: PSD ROC from example code](https://raw.githubusercontent.com/audioanalytic/psds_eval/master/examples/data/psd_roc.png)
+![Fig: PSD ROC from example code](https://raw.githubusercontent.com/DCASE-REPO/psds_eval/master/examples/data/psd_roc.png)
 
 ## Notebook on PSDS evaluation of DCASE2020 Task 4 baseline system
 A Jupyter notebook has been created to show how PSDS can be used to extract
@@ -278,4 +278,4 @@ The `psds_eval` package provides a function called
    ](./jupyter/psds.ipynb).
 
 ## License
-psds\_eval is MIT licensed, as found in the [LICENSE](https://github.com/audioanalytic/psds_eval/blob/master/LICENSE) file.
+psds\_eval is MIT licensed, as found in the [LICENSE](https://github.com/DCASE-REPO/psds_eval/blob/master/LICENSE) file.

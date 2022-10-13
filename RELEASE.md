@@ -1,3 +1,7 @@
+# Release 0.5.3
+
+- Prepare for repo ownership transfer
+
 # Release 0.5.2
 
 ## Bug fixes

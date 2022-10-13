@@ -460,8 +460,6 @@ def test_unknown_class_constraint_check():
 
 
 def test_custom_metadata_columns_do_not_cause_errors():
-    # See https://github.com/audioanalytic/psds_eval/issues/4 for a more
-    # extensive explanation of the issue this test is ensuring is fixed.
     gt = pd.DataFrame(
         {
             'filename': 'a.wav',
