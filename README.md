@@ -1,5 +1,7 @@
 # Polyphonic Sound Detection Score (PSDS)
 
+[![PyPI version](https://badge.fury.io/py/psds-eval.svg)](https://badge.fury.io/py/psds-eval)
+
 `psds_eval` is a Python package containing a library to
 calculate the Polyphonic Sound Detection Score as presented in:
 
